@@ -1,0 +1,25 @@
+# gitleaks config for api-clients-commons
+# Extends the built-in ruleset (AWS/GCP/private-keys/generic API tokens/etc.)
+# — directly relevant here since this repo's entire job is holding official
+# third-party API client-credential handling code.
+#
+# The pre-commit + pre-push hooks (.githooks/) run gitleaks against this file.
+# Precedence: -c flag wins; otherwise gitleaks auto-loads (repo)/.gitleaks.toml.
+
+title = "api-clients-commons secret scan"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Global allowlist — example/template files and this config's own patterns"
+paths = [
+  '''\.gitleaks\.toml$''',
+  '''(^|/)\.env\.(example|sample|template)$''',
+  '''(^|/)CONTRACT\.md$''',
+  '''(^|/)README\.md$''',
+]
+# Common placeholder values so example files with obvious dummies don't trip.
+regexes = [
+  '''(?i)(your|example|placeholder|changeme|redacted|xxx+|<[a-z_ -]+>)''',
+]
