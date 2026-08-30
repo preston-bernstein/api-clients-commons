@@ -20,3 +20,9 @@ packages = ["src/api_clients_commons"]
 markers = [
     "network: tests requiring live internet access",
 ]
+
+[tool.ruff.lint]
+# Pin the rule set explicitly. With no select, ruff applies its own default,
+# which has widened across releases -- a ruff upgrade alone could then turn CI
+# red with no change here. This is ruff's long-standing default, written down.
+select = ["E4", "E7", "E9", "F"]
