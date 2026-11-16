@@ -21,7 +21,7 @@ Python 3.11 or newer is required.
 1. `git clone git@github.com:preston-bernstein/api-clients-commons.git`
 2. `cd api-clients-commons`
 3. `scripts/install-hooks.sh` (turns on the secret-scan hooks; needs `gitleaks`, for example `brew install gitleaks`)
-4. `pip install -e ".[test,dev]"`
+4. `uv sync` (installs the package and the dev tools from `uv.lock`)
 
 ## Set the eBay credentials
 
@@ -60,8 +60,8 @@ The `ebay-fetch` Claude Code skill wraps this CLI. See its `SKILL.md`.
 
 ## Run the tests
 
-1. `pip install -e ".[test]"`
-2. `pytest`
+1. `uv sync`
+2. `uv run pytest`
 
 Tests use mocked HTTP. They make no live eBay calls.
 

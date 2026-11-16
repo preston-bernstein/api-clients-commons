@@ -1,0 +1,5 @@
+scripts/core-validate.sh Vendored unchanged from the core pack.
+scripts/py-validate.sh Vendored unchanged from the python-uv pack.
+scripts/shell-validate.sh Vendored unchanged from the shell pack.
+scripts/gha-validate.sh Vendored unchanged from the github-actions pack.
+scripts/writing-validate.sh Vendored unchanged from the writing pack.

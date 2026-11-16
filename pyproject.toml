@@ -5,9 +5,8 @@ description = "Shared, authenticated official-API clients for home-lab projects 
 requires-python = ">=3.11"
 dependencies = ["requests>=2.31.0,<3"]
 
-[project.optional-dependencies]
-test = ["pytest>=8", "pytest-httpserver"]
-dev = ["ruff==0.16.1"]
+[dependency-groups]
+dev = ["ruff==0.16.1", "mypy==2.4.1", "pytest>=8", "pytest-httpserver", "types-requests"]
 
 [build-system]
 requires = ["hatchling"]
@@ -17,12 +16,35 @@ build-backend = "hatchling.build"
 packages = ["src/api_clients_commons"]
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--strict-markers", "--strict-config", "-ra"]
 markers = [
     "network: tests requiring live internet access",
 ]
 
+[tool.ruff]
+line-length = 100
+# Vendored gate scripts are copied unchanged from the stack packs.
+extend-exclude = ["scripts/*-*.py"]
+
 [tool.ruff.lint]
-# Pin the rule set explicitly. With no select, ruff applies its own default,
-# which has widened across releases -- a ruff upgrade alone could then turn CI
-# red with no change here. This is ruff's long-standing default, written down.
-select = ["E4", "E7", "E9", "F"]
+# Pin the rule set explicitly. Ruff's default set has widened across releases,
+# so an upgrade alone could turn CI red. The ignore list stays empty: an
+# exception is a one-line `# noqa: CODE -- reason` next to the code.
+select = [
+  "E", "F", "I", "N", "UP",
+  "S", "B", "BLE",
+  "ASYNC",
+  "ANN",
+  "T20",
+  "G",
+  "PGH", "RUF",
+]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "ANN"]
+
+[tool.mypy]
+strict = true
+files = ["src"]

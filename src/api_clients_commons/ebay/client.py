@@ -16,7 +16,7 @@ import requests
 
 from api_clients_commons.ebay.errors import EbayApiRequestFailed, EbayCredentialsMissing
 
-_TOKEN_URL = "https://api.ebay.com/identity/v1/oauth2/token"
+_TOKEN_URL = "https://api.ebay.com/identity/v1/oauth2/token"  # noqa: S105 -- endpoint URL, not a secret
 _SEARCH_URL = "https://api.ebay.com/buy/browse/v1/item_summary/search"
 _ITEM_BY_LEGACY_ID_URL = "https://api.ebay.com/buy/browse/v1/item_summary/item_by_legacy_id"
 
@@ -102,9 +102,11 @@ def _require_credentials() -> tuple[str, str]:
     if not client_secret:
         missing.append("EBAY_CLIENT_SECRET")
     if missing:
-        raise EbayCredentialsMissing(f"{' and '.join(missing)} is unset or blank"
-                                      if len(missing) == 1
-                                      else f"{' and '.join(missing)} are unset or blank")
+        raise EbayCredentialsMissing(
+            f"{' and '.join(missing)} is unset or blank"
+            if len(missing) == 1
+            else f"{' and '.join(missing)} are unset or blank"
+        )
     return client_id, client_secret
 
 
@@ -157,7 +159,7 @@ def _get_token(timeout_s: float) -> str:
         )
 
     payload = response.json()
-    access_token = payload["access_token"]
+    access_token: str = payload["access_token"]
     expires_in = payload["expires_in"]
 
     _token_cache = (access_token, time.monotonic() + expires_in - 60)
@@ -189,7 +191,7 @@ def _reset_token_cache_for_tests() -> None:
     _invalidate_token_cache()
 
 
-def _call_browse_api(endpoint: str, params: dict, timeout_s: float) -> tuple[int, str]:
+def _call_browse_api(endpoint: str, params: dict[str, str], timeout_s: float) -> tuple[int, str]:
     """Call a Browse API endpoint, retrying once on a 401 with a fresh token.
 
     Shared by `search()` and `get_item()` — both are a single authenticated
@@ -218,9 +220,7 @@ def _call_browse_api(endpoint: str, params: dict, timeout_s: float) -> tuple[int
             "X-EBAY-C-MARKETPLACE-ID": "EBAY_US",
         }
         try:
-            return requests.get(
-                endpoint, params=params, headers=headers, timeout=timeout_s
-            )
+            return requests.get(endpoint, params=params, headers=headers, timeout=timeout_s)
         except requests.exceptions.RequestException as exc:
             raise EbayApiRequestFailed(
                 "eBay Browse API request failed", status=None, body=str(exc)
@@ -284,9 +284,7 @@ def get_item(item_id: str, *, timeout_s: float = 10.0) -> tuple[int, str]:
         EbayApiRequestFailed: If the request fails at the HTTP layer, via a
             non-2xx response, or via a second consecutive 401 after one retry.
     """
-    return _call_browse_api(
-        _ITEM_BY_LEGACY_ID_URL, {"legacy_item_id": item_id}, timeout_s
-    )
+    return _call_browse_api(_ITEM_BY_LEGACY_ID_URL, {"legacy_item_id": item_id}, timeout_s)
 
 
 def fetch_url(url: str, *, timeout_s: float = 10.0) -> tuple[int, str]:
@@ -320,6 +318,4 @@ def fetch_url(url: str, *, timeout_s: float = 10.0) -> tuple[int, str]:
     if item_id is not None:
         return get_item(item_id, timeout_s=timeout_s)
 
-    raise ValueError(
-        f"eBay URL {url!r} matches neither the search (_nkw) nor item (/itm/) shape"
-    )
+    raise ValueError(f"eBay URL {url!r} matches neither the search (_nkw) nor item (/itm/) shape")
