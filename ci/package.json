@@ -1,0 +1,9 @@
+{
+  "name": "gate-tools",
+  "private": true,
+  "description": "Pinned Node tools for the repo gates (jscpd for core, bats for shell).",
+  "dependencies": {
+    "bats": "1.13.0",
+    "jscpd": "5.4.2"
+  }
+}

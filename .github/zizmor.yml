@@ -1,0 +1,7 @@
+# Allow-list for `uses:`. A new third-party action fails the gate until someone adds it here on purpose.
+rules:
+  forbidden-uses:
+    config:
+      allow:
+        - actions/checkout
+        - astral-sh/setup-uv
