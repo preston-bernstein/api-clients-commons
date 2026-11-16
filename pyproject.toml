@@ -5,6 +5,11 @@ description = "Shared, authenticated official-API clients for home-lab projects 
 requires-python = ">=3.11"
 dependencies = ["requests>=2.31.0,<3"]
 
+[project.optional-dependencies]
+# The shared CI installs these extras: pip install -e ".[test,dev]".
+test = ["pytest>=8", "pytest-httpserver"]
+dev = ["ruff==0.16.1", "mypy==2.4.1", "types-requests"]
+
 [dependency-groups]
 dev = ["ruff==0.16.1", "mypy==2.4.1", "pytest>=8", "pytest-httpserver", "types-requests"]
 
