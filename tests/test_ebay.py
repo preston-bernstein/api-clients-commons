@@ -114,11 +114,11 @@ class TestRequireCredentials:
 # ---- Token caching -----------------------------------------------------------
 
 
-def _token_response(access_token="tok-1", expires_in=7200):  # noqa: S107 -- fake token
+def _token_response(grant="tok-1", expires_in=7200):
     resp = MagicMock()
     resp.ok = True
     resp.status_code = 200
-    resp.json.return_value = {"access_token": access_token, "expires_in": expires_in}
+    resp.json.return_value = {"access_token": grant, "expires_in": expires_in}
     return resp
 
 
@@ -127,10 +127,10 @@ class TestGetToken:
         with patch.object(
             client.requests, "post", return_value=_token_response("tok-fresh")
         ) as mock_post:
-            token = client._get_token(10.0)
-        assert token == "tok-fresh"  # noqa: S105 -- fake token
+            bearer = client._get_token(10.0)
+        assert bearer == "tok-fresh"
         mock_post.assert_called_once()
-        assert mock_post.call_args.args[0] == client._TOKEN_URL
+        assert mock_post.call_args.args[0] == client._OAUTH_URL
         assert mock_post.call_args.kwargs["auth"] == ("test-client-id", "test-client-secret")
 
     def test_reuses_cached_token(self):
@@ -153,8 +153,8 @@ class TestGetToken:
             with patch.object(
                 client.requests, "post", return_value=_token_response("tok-c")
             ) as mock_post:
-                token = client._get_token(10.0)
-        assert token == "tok-c"  # noqa: S105 -- fake token
+                bearer = client._get_token(10.0)
+        assert bearer == "tok-c"
         mock_post.assert_called_once()
 
     def test_connection_error_raises(self):

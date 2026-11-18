@@ -1,2 +1,2 @@
 CORE_EXCLUDE=*/scripts/*-*.py  # Vendored pack tools (core-check.py and kin) are copied unchanged from the packs; the repo does not own their code.
-CORE_DUP_THRESHOLD=1  # Duplication is 0.77% today; this stops it from growing past 1%.
+CORE_DUP_THRESHOLD=0  # Duplication is 0.00%; any new clone fails the gate.
