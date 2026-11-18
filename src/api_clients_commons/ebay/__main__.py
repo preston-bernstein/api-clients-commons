@@ -16,6 +16,7 @@ Contract:
 from __future__ import annotations
 
 import argparse
+import importlib.metadata
 import sys
 
 from api_clients_commons.ebay import fetch_url, search
@@ -34,13 +35,11 @@ def _print_version_diagnostic() -> None:
     """
     try:
         try:
-            import importlib.metadata
-
             version = importlib.metadata.version("api-clients-commons")
-            print(f"api-clients-commons version: {version}", file=sys.stderr)  # noqa: T201 -- CLI diagnostic on stderr
-        except Exception:  # noqa: BLE001
-            print(f"running from: {__file__}", file=sys.stderr)  # noqa: T201 -- CLI diagnostic on stderr
-    except Exception:  # noqa: BLE001, S110
+            sys.stderr.write(f"api-clients-commons version: {version}\n")
+        except Exception:  # noqa: BLE001 -- diagnostic must never crash the failure path
+            sys.stderr.write(f"running from: {__file__}\n")
+    except Exception:  # noqa: BLE001, S110 -- stderr itself may be broken; nothing left to report to
         pass
 
 
@@ -74,12 +73,12 @@ def main(argv: list[str] | None = None) -> int:
             _status, text = fetch_url(args.query_or_url, timeout_s=args.timeout_s)
         else:
             _status, text = search(args.query_or_url, timeout_s=args.timeout_s)
-    except Exception as exc:  # noqa: BLE001
-        print(f"{type(exc).__name__}: {exc}", file=sys.stderr)  # noqa: T201 -- CLI error output
+    except Exception as exc:  # noqa: BLE001 -- CLI contract: any failure prints and exits 1
+        sys.stderr.write(f"{type(exc).__name__}: {exc}\n")
         _print_version_diagnostic()
         return 1
 
-    print(text)  # noqa: T201 -- CLI result goes to stdout
+    sys.stdout.write(f"{text}\n")
     return 0
 
 

@@ -16,7 +16,7 @@ import requests
 
 from api_clients_commons.ebay.errors import EbayApiRequestFailed, EbayCredentialsMissing
 
-_TOKEN_URL = "https://api.ebay.com/identity/v1/oauth2/token"  # noqa: S105 -- endpoint URL, not a secret
+_OAUTH_URL = "https://api.ebay.com/identity/v1/oauth2/token"
 _SEARCH_URL = "https://api.ebay.com/buy/browse/v1/item_summary/search"
 _ITEM_BY_LEGACY_ID_URL = "https://api.ebay.com/buy/browse/v1/item_summary/item_by_legacy_id"
 
@@ -110,6 +110,43 @@ def _require_credentials() -> tuple[str, str]:
     return client_id, client_secret
 
 
+def _request_token(timeout_s: float) -> requests.Response:
+    """POST a client-credentials grant to eBay and return the checked response.
+
+    Raises:
+        EbayCredentialsMissing: If credentials are unset or blank.
+        EbayApiRequestFailed: At the HTTP layer or on a non-2xx response.
+    """
+    client_id, client_secret = _require_credentials()
+    try:
+        response = requests.post(
+            _OAUTH_URL,
+            timeout=timeout_s,
+            auth=(client_id, client_secret),
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            data={
+                "grant_type": "client_credentials",
+                "scope": "https://api.ebay.com/oauth/api_scope",
+            },
+        )
+    except requests.exceptions.RequestException as exc:
+        raise EbayApiRequestFailed(
+            "eBay OAuth token request failed", status=None, body=str(exc)
+        ) from exc
+    _raise_if_not_ok(response, "eBay OAuth token request")
+    return response
+
+
+def _raise_if_not_ok(response: requests.Response, what: str) -> None:
+    if response.ok:
+        return
+    raise EbayApiRequestFailed(
+        f"{what} failed with status {response.status_code}",
+        status=response.status_code,
+        body=response.text,
+    )
+
+
 def _get_token(timeout_s: float) -> str:
     """Fetch a cached or fresh eBay OAuth2 client-credentials bearer token.
 
@@ -133,32 +170,7 @@ def _get_token(timeout_s: float) -> str:
     if _token_cache is not None and time.monotonic() < _token_cache[1]:
         return _token_cache[0]
 
-    client_id, client_secret = _require_credentials()
-
-    try:
-        response = requests.post(
-            _TOKEN_URL,
-            timeout=timeout_s,
-            auth=(client_id, client_secret),
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-            data={
-                "grant_type": "client_credentials",
-                "scope": "https://api.ebay.com/oauth/api_scope",
-            },
-        )
-    except requests.exceptions.RequestException as exc:
-        raise EbayApiRequestFailed(
-            "eBay OAuth token request failed", status=None, body=str(exc)
-        ) from exc
-
-    if not response.ok:
-        raise EbayApiRequestFailed(
-            f"eBay OAuth token request failed with status {response.status_code}",
-            status=response.status_code,
-            body=response.text,
-        )
-
-    payload = response.json()
+    payload = _request_token(timeout_s).json()
     access_token: str = payload["access_token"]
     expires_in = payload["expires_in"]
 
@@ -191,6 +203,21 @@ def _reset_token_cache_for_tests() -> None:
     _invalidate_token_cache()
 
 
+def _browse_get(
+    endpoint: str, params: dict[str, str], bearer_token: str, timeout_s: float
+) -> requests.Response:
+    headers = {
+        "Authorization": f"Bearer {bearer_token}",
+        "X-EBAY-C-MARKETPLACE-ID": "EBAY_US",
+    }
+    try:
+        return requests.get(endpoint, params=params, headers=headers, timeout=timeout_s)
+    except requests.exceptions.RequestException as exc:
+        raise EbayApiRequestFailed(
+            "eBay Browse API request failed", status=None, body=str(exc)
+        ) from exc
+
+
 def _call_browse_api(endpoint: str, params: dict[str, str], timeout_s: float) -> tuple[int, str]:
     """Call a Browse API endpoint, retrying once on a 401 with a fresh token.
 
@@ -212,35 +239,14 @@ def _call_browse_api(endpoint: str, params: dict[str, str], timeout_s: float) ->
             layer, via a non-2xx response, or via a second consecutive 401
             after the one retry.
     """
-    token = _get_token(timeout_s)
-
-    def _call(bearer_token: str) -> requests.Response:
-        headers = {
-            "Authorization": f"Bearer {bearer_token}",
-            "X-EBAY-C-MARKETPLACE-ID": "EBAY_US",
-        }
-        try:
-            return requests.get(endpoint, params=params, headers=headers, timeout=timeout_s)
-        except requests.exceptions.RequestException as exc:
-            raise EbayApiRequestFailed(
-                "eBay Browse API request failed", status=None, body=str(exc)
-            ) from exc
-
-    response = _call(token)
+    response = _browse_get(endpoint, params, _get_token(timeout_s), timeout_s)
 
     if response.status_code == 401:
         _invalidate_token_cache()
-        token = _get_token(timeout_s)
-        response = _call(token)
+        response = _browse_get(endpoint, params, _get_token(timeout_s), timeout_s)
 
-    if response.ok:
-        return response.status_code, response.text
-
-    raise EbayApiRequestFailed(
-        f"eBay Browse API request failed with status {response.status_code}",
-        status=response.status_code,
-        body=response.text,
-    )
+    _raise_if_not_ok(response, "eBay Browse API request")
+    return response.status_code, response.text
 
 
 def search(query: str, *, timeout_s: float = 10.0) -> tuple[int, str]:
@@ -274,15 +280,7 @@ def get_item(item_id: str, *, timeout_s: float = 10.0) -> tuple[int, str]:
         timeout_s: Timeout in seconds for both the OAuth token request and
             the Browse API request.
 
-    Returns:
-        A `(status_code, response_text)` tuple — `response_text` is the raw
-        JSON body from the Browse API.
-
-    Raises:
-        EbayCredentialsMissing: If EBAY_CLIENT_ID/EBAY_CLIENT_SECRET are
-            unset or blank.
-        EbayApiRequestFailed: If the request fails at the HTTP layer, via a
-            non-2xx response, or via a second consecutive 401 after one retry.
+    Returns and raises the same as `search()`.
     """
     return _call_browse_api(_ITEM_BY_LEGACY_ID_URL, {"legacy_item_id": item_id}, timeout_s)
 

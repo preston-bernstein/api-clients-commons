@@ -4,7 +4,7 @@ Read `CLAUDE.md` first for what this repo is and for the secret-scan hooks.
 
 ## Commands
 
-- The core gate: `bash scripts/core-validate.sh` (file size, names, complexity, function length, parameters, nesting, duplication). Limits live in `.core-config`. Old over-limit functions are in `.core-baseline.json`; it may only shrink.
+- The core gate: `bash scripts/core-validate.sh` (file size, names, complexity, function length, parameters, nesting, duplication). Limits live in `.core-config`. No function is over a limit, so there is no baseline file. Do not add one.
 - The Python gate: `bash scripts/py-validate.sh` (`uv run --locked` ruff check, ruff format --check, mypy, pytest).
 - The GitHub Actions gate: `bash scripts/gha-validate.sh` (workflow-check.py, actionlint, zizmor).
 - The shell gate: `bash scripts/shell-validate.sh` (bash -n, shell-check.py, shellcheck, shfmt, bats).
