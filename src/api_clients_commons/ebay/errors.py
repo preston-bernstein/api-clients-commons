@@ -1,7 +1,7 @@
 """Exceptions for the eBay Browse API client."""
 
 
-class EbayCredentialsMissing(RuntimeError):
+class EbayCredentialsMissing(RuntimeError):  # noqa: N818 -- public name; a rename breaks callers
     """Raised when EBAY_CLIENT_ID and/or EBAY_CLIENT_SECRET environment
     variables are unset or blank before attempting an OAuth call.
 
@@ -12,7 +12,7 @@ class EbayCredentialsMissing(RuntimeError):
     """
 
 
-class EbayApiRequestFailed(RuntimeError):
+class EbayApiRequestFailed(RuntimeError):  # noqa: N818 -- public name; a rename breaks callers
     """Raised when an HTTP-layer failure occurs on an eBay OAuth token
     request or Browse API request.
 
@@ -25,7 +25,7 @@ class EbayApiRequestFailed(RuntimeError):
             underlying HTTP client exception message if no response was received.
     """
 
-    def __init__(self, message, status=None, body=""):
+    def __init__(self, message: str, status: int | None = None, body: str = "") -> None:
         """Initialize EbayApiRequestFailed with message and response details.
 
         Args:

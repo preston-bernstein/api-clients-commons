@@ -114,39 +114,47 @@ class TestRequireCredentials:
 # ---- Token caching -----------------------------------------------------------
 
 
-def _token_response(access_token="tok-1", expires_in=7200):
+def _token_response(grant="tok-1", expires_in=7200):
     resp = MagicMock()
     resp.ok = True
     resp.status_code = 200
-    resp.json.return_value = {"access_token": access_token, "expires_in": expires_in}
+    resp.json.return_value = {"access_token": grant, "expires_in": expires_in}
     return resp
 
 
 class TestGetToken:
     def test_fetches_fresh_token(self):
-        with patch.object(client.requests, "post", return_value=_token_response("tok-fresh")) as mock_post:
-            token = client._get_token(10.0)
-        assert token == "tok-fresh"
+        with patch.object(
+            client.requests, "post", return_value=_token_response("tok-fresh")
+        ) as mock_post:
+            bearer = client._get_token(10.0)
+        assert bearer == "tok-fresh"
         mock_post.assert_called_once()
-        assert mock_post.call_args.args[0] == client._TOKEN_URL
+        assert mock_post.call_args.args[0] == client._OAUTH_URL
         assert mock_post.call_args.kwargs["auth"] == ("test-client-id", "test-client-secret")
 
     def test_reuses_cached_token(self):
-        with patch.object(client.requests, "post", return_value=_token_response("tok-a")) as mock_post:
+        with patch.object(
+            client.requests, "post", return_value=_token_response("tok-a")
+        ) as mock_post:
             first = client._get_token(10.0)
             second = client._get_token(10.0)
         assert first == second == "tok-a"
         mock_post.assert_called_once()
 
     def test_expired_token_triggers_refetch(self):
-        with patch.object(client.requests, "post", return_value=_token_response("tok-b", expires_in=100)):
+        with patch.object(
+            client.requests, "post", return_value=_token_response("tok-b", expires_in=100)
+        ):
             client._get_token(10.0)
 
         with patch.object(client, "time") as mock_time:
             mock_time.monotonic.return_value = 1_000_000.0
-            with patch.object(client.requests, "post", return_value=_token_response("tok-c")) as mock_post:
-                token = client._get_token(10.0)
-        assert token == "tok-c"
+            with patch.object(
+                client.requests, "post", return_value=_token_response("tok-c")
+            ) as mock_post:
+                bearer = client._get_token(10.0)
+        assert bearer == "tok-c"
         mock_post.assert_called_once()
 
     def test_connection_error_raises(self):
@@ -154,7 +162,9 @@ class TestGetToken:
 
         with (
             patch.object(
-                client.requests, "post", side_effect=real_requests.exceptions.ConnectionError("boom")
+                client.requests,
+                "post",
+                side_effect=real_requests.exceptions.ConnectionError("boom"),
             ),
             pytest.raises(EbayApiRequestFailed) as exc_info,
         ):
@@ -280,7 +290,9 @@ class TestBrowseApiRetryAndFailure:
         with (
             patch.object(client.requests, "post", return_value=_token_response()),
             patch.object(
-                client.requests, "get", return_value=_browse_response(status_code=500, text="server error")
+                client.requests,
+                "get",
+                return_value=_browse_response(status_code=500, text="server error"),
             ) as mock_get,
             pytest.raises(EbayApiRequestFailed) as exc_info,
         ):
